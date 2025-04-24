@@ -12,15 +12,19 @@ WHITE = pygame.Color(255, 255, 255)
 BLACK = pygame.Color(0, 0, 0)
 RED = pygame.Color(255, 0, 0)
 LIGHT_BLUE = pygame.Color(50, 50, 255)
+BEIGE = pygame.Color(255, 245, 200)
 VICTORY_OVAL = pygame.Color(255, 165, 100, 175)
 GAME_COMPLETED_OVAL = pygame.Color(100, 255, 100, 175)
 TOP_BAR = pygame.Color(100, 100, 100)
-BOTON_SELECCIONADO = pygame.Color(200, 255, 200)
-BOTON = pygame.Color(100, 255, 100)
+BOTON_CAMBLAB_HOLD = pygame.Color(200, 255, 200)
+BOTON_CAMLAB = pygame.Color(100, 255, 100)
+NOMBRE_JUEGO = pygame.Color(255, 215, 0)
+BOTON_JUGAR = pygame.Color(50, 205, 50)
+BOTON_JUGAR_HOLD = pygame.Color(100, 205, 100)
 
 
 class Boton:
-    def __init__(self, pos, dim, accion, text, color = BOTON, colorSeleccionado = BOTON_SELECCIONADO, colorTexto = BLACK):
+    def __init__(self, pos, dim, accion, text, color = BOTON_CAMLAB, colorSeleccionado = BOTON_CAMBLAB_HOLD, colorTexto = BLACK):
         self.rectangulo = pygame.Rect(pos[0], pos[1], dim[0], dim[1])
         self.font = pygame.font.Font(None, 24)
         self.text = text
@@ -76,7 +80,7 @@ class Laberinto:
         while True:
             for event in pygame.event.get():
                 if event.type == QUIT:
-                    pygame.exit()
+                    pygame.quit()
                     sys.exit()
                 if event.type == MOUSEBUTTONDOWN and event.button == 1:
                     self.click(event.pos)
@@ -183,21 +187,26 @@ class MenuPrincipal:
         self.window = None
         self.windowWidth = 600
         self.windowHeight = 400
+        buttonWidth = self.windowWidth//6
+        buttonHeight = buttonWidth//2
+        self.botonJugar = Boton((self.windowWidth//2-buttonWidth//2, 8*self.windowHeight//10), (buttonWidth,buttonHeight), self.jugarLaberinto, "Jugar", BOTON_JUGAR, BOTON_JUGAR_HOLD)
         
     
     def jugarLaberinto(self):
-        for i in range(self.numLaberintos):
-            if (not self.isLabCompleted[i]):
-                break
-            if (i == self.numLaberintos - 1):
-                self.juegoCompletado()
-                pygame.time.wait(8000)
-                return True
+        while True:
+            for i in range(self.numLaberintos):
+                if (not self.isLabCompleted[i]):
+                    break
+                if (i == self.numLaberintos - 1):
+                    self.juegoCompletado()
+                    pygame.time.wait(10000)
+                    pygame.quit()
+                    sys.exit()
 
-        if(self.laberintos[self.labActual].iniciarLaberinto()):
-            for i in range(self.labActual+1, self.labActual+self.numLaberintos):
-                if (not self.isLabCompleted[i%self.numLaberintos]):
-                    self.labActual = i%self.numLaberintos
+            if(self.laberintos[self.labActual].iniciarLaberinto()):
+                for i in range(self.labActual+1, self.labActual+self.numLaberintos):
+                    if (not self.isLabCompleted[i%self.numLaberintos]):
+                        self.labActual = i%self.numLaberintos
             
 
     def addLaberinto(self, laberinto):
@@ -225,7 +234,7 @@ class MenuPrincipal:
         return False
 
     def juegoCompletado(self):
-        self.window = pygame.display.set_mode((self.windowWidth, self.windowHeight))
+        self.window = pygame.display.set_mode((600,400))
         fuente = pygame.font.Font(None, 24)
 
         #Setea una imagen de fondo
@@ -250,9 +259,54 @@ class MenuPrincipal:
 
         pygame.display.update()
 
-    def draw(self):
-        pass
+    def iniciarMenu(self):
+        self.window = pygame.display.set_mode((self.windowWidth, self.windowHeight))
+        while True:
+            for event in pygame.event.get():
+                if event.type == QUIT:
+                    pygame.quit()
+                    sys.exit()
+                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    self.botonJugar.handle_event(event.pos)
 
+            self.dibujarMenu()
+
+            pygame.display.update()
+            FramesPerSecond.tick(FPS)
+        
+
+    def dibujarMenu(self):
+        fuenteTitulo = pygame.font.Font(None, 60)
+        fuenteTituloInstrucciones = pygame.font.Font(None, 40)
+        fuenteInstrucciones = pygame.font.Font(None, 25)
+
+        #Setea una imagen de fondo
+        fondo = pygame.image.load("imagenes\maze.jpg")
+        fondo = pygame.transform.scale(fondo, (self.windowWidth, self.windowHeight))
+        self.window.blit(fondo, (0, 0))
+
+        #Titulo del juego
+        texto = fuenteTitulo.render("Laberinto Saltarin", True, NOMBRE_JUEGO)
+        rectTexto = texto.get_rect(center=(self.windowWidth//2, 1*self.windowHeight//10))
+        self.window.blit(texto, rectTexto)
+
+        #Instrucciones
+        texto = fuenteTituloInstrucciones.render("Instrucciones", True, WHITE)
+        rectTexto = texto.get_rect(center=(self.windowWidth//2, 2*self.windowHeight//10))
+        self.window.blit(texto, rectTexto)
+
+        instrucciones = "* Tu posición actual es la casilla azul.\n* Solo puedes moverte a casillas que esten a una distancia\n  igual al número de tu casilla actual.\n* Solo se permiten movimientos horizontales o verticales.\n* Tu objetivo es llegar a la casilla roja en el menor número\n  de movimientos.\n* Ganas al resolver todos los laberintos."
+        instrucciones = instrucciones.splitlines()
+        for i, line in enumerate(instrucciones):
+            texto_sombra = fuenteInstrucciones.render(line, True, (0, 0, 0))
+            texto = fuenteInstrucciones.render(line, True, BEIGE)
+            rectTexto = texto.get_rect(topleft=(self.windowWidth//10, 5*self.windowHeight//20 + 30*i))
+            self.window.blit(texto_sombra, (rectTexto.topleft[0]+3, rectTexto.topleft[1]+3))
+            self.window.blit(texto, rectTexto)
+            
+        
+        #Dibujar boton jugar
+        self.botonJugar.draw(self.window)
 
 def main():
     #Recibe un archivo con las descripciones de los laberintos
@@ -285,12 +339,10 @@ def main():
     while True:
         for event in pygame.event.get():
             if event.type == QUIT:
-                pygame.exit()
+                pygame.quit()
                 sys.exit()
         
-        if(menu.jugarLaberinto()):
-            pygame.exit()
-            sys.exit()
+        menu.iniciarMenu()
 
         pygame.display.update()
         FramesPerSecond.tick(FPS)
