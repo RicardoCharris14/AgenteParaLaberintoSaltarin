@@ -12,26 +12,29 @@ class Bot(ABC):
         self.width = None
         self.height = None
         self.camino = None
+        self.end = None
     
-    def seleccionarLaberinto(self, laberinto, pos):
+    def seleccionarLaberinto(self, laberinto, start, end):
         self.laberinto = laberinto
-        self.pos = pos
+        self.pos = start
         self.revisados = [[False for _ in laberinto[0]] for _ in laberinto]
         self.width = len(laberinto[0])
         self.height = len(laberinto)
         self.camino = []
+        self.end = end
 
     @abstractmethod
     def resolverLaberinto(self):
         pass
+
 
 class BotDFS(Bot):
     def __init__(self):
         super().__init__()
         self.vecinos = None
     
-    def seleccionarLaberinto(self, laberinto, pos):
-        super().seleccionarLaberinto(laberinto, pos)
+    def seleccionarLaberinto(self, laberinto, start, end):
+        super().seleccionarLaberinto(laberinto, start, end)
         self.vecinos = []
         
     def resolverLaberinto(self):
@@ -40,7 +43,7 @@ class BotDFS(Bot):
             self.camino.append((self.pos[0], self.pos[1]))
             salto = self.laberinto[self.pos[FILA]][self.pos[COLUMNA]]
 
-            if (salto == 0):
+            if (self.end[0] == self.pos[0] and self.end[1] == self.pos[1]):
                 return self.camino
 
             for i in range(-1, 2, 2):
@@ -78,8 +81,8 @@ class BotCU(Bot):
         self.heap = None
         self.ancestros = None
 
-    def seleccionarLaberinto(self, laberinto, pos):
-        super().seleccionarLaberinto(laberinto, pos)
+    def seleccionarLaberinto(self, laberinto, start, end):
+        super().seleccionarLaberinto(laberinto, start, end)
         self.heap = []
         self.ancestros = {}
 
@@ -91,13 +94,16 @@ class BotCU(Bot):
             else:
                 return []
             
+            if (self.end[0] == self.pos[0] and self.end[1] == self.pos[1]):
+                return [(self.pos[0], self.pos[1])]
+            
             salto = self.laberinto[self.pos[FILA]][self.pos[COLUMNA]]
             for dx, dy in [(-salto, 0), (salto, 0), (0, -salto), (0, salto)]:
                 x = self.pos[0] + dx
                 y = self.pos[1] + dy
                 if (0 <= x < self.width and 0 <= y < self.height):
                     if (not self.revisados[y][x]):
-                        if (self.laberinto[y][x] == 0):
+                        if (self.end[0] == x and self.end[1] == y):
                             self.camino = [None]*(peso+2)
                             self.camino[peso+1] = (x, y)
                             self.camino[peso] = (self.pos[0], self.pos[1])
