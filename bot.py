@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+import heapq
 
 FILA = 1
 COLUMNA = 0
@@ -61,6 +62,7 @@ class BotDFS(Bot):
             if (self.vecinos and (self.vecinos[-1][1][0] != self.pos[0] or  self.vecinos[-1][1][1] != self.pos[1]) and self.camino):
                 self.camino.pop()
                 self.pos = self.camino[-1]
+                self.camino.pop()
                 continue
 
             if (self.vecinos):
@@ -68,4 +70,48 @@ class BotDFS(Bot):
                 self.pos = (sigVecino[0][0], sigVecino[0][1])
             else:
                 return []
+
+
+class BotCU(Bot):
+    def __init__(self):
+        super().__init__()
+        self.heap = None
+        self.ancestros = None
+
+    def seleccionarLaberinto(self, laberinto, pos):
+        super().seleccionarLaberinto(laberinto, pos)
+        self.heap = []
+        self.ancestros = {}
+
+    def resolverLaberinto(self):
+        heapq.heappush(self.heap, (0, self.pos))
+        while True:
+            if (self.heap):
+                peso, self.pos = heapq.heappop(self.heap)
+            else:
+                return []
+            
+            salto = self.laberinto[self.pos[FILA]][self.pos[COLUMNA]]
+            for dx, dy in [(-salto, 0), (salto, 0), (0, -salto), (0, salto)]:
+                x = self.pos[0] + dx
+                y = self.pos[1] + dy
+                if (0 <= x < self.width and 0 <= y < self.height):
+                    if (not self.revisados[y][x]):
+                        if (self.laberinto[y][x] == 0):
+                            self.camino = [None]*(peso+2)
+                            self.camino[peso+1] = (x, y)
+                            self.camino[peso] = (self.pos[0], self.pos[1])
+                            aux = (self.pos[0], self.pos[1])
+                            for i in range(peso-1, -1, -1):
+                                anterior = self.ancestros[aux]
+                                self.camino[i] = anterior
+                                aux = anterior
+                            return self.camino
+
+                        heapq.heappush(self.heap, (peso+1, (x,y)))
+                        self.ancestros[(x, y)] = (self.pos[0], self.pos[1])
+                        self.revisados[y][x] = True
+
+
+        
             

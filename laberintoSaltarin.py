@@ -1,5 +1,5 @@
 import pygame, sys
-from bot import Bot, BotDFS
+from bot import BotDFS, BotCU
 from pygame.locals import *
 
 pygame.init()
@@ -24,6 +24,13 @@ NOMBRE_JUEGO = pygame.Color(255, 215, 0)
 BOTONES_MENU = pygame.Color(50, 205, 50)
 BOTONES_MENU_HOLD = pygame.Color(100, 205, 100)
 
+def esperar(tiempo_ms):
+    tiempo_inicial = pygame.time.get_ticks()
+    while pygame.time.get_ticks() - tiempo_inicial < tiempo_ms:
+        for event in pygame.event.get():
+            if event.type == QUIT:
+                pygame.quit()
+                sys.exit()
 
 class Boton:
     def __init__(self, pos, dim, accion, text, color = BOTON_CAMLAB, colorSeleccionado = BOTON_CAMBLAB_HOLD, colorTexto = BLACK):
@@ -64,7 +71,7 @@ class Laberinto:
 
         #variables para dibujar el laberinto
         self.window = None
-        self.topBarHeight = 50
+        self.topBarHeight = 100
         self.tamanoCelda = max(80 - 10* (max(self.nFilas, self.nColumnas)//5), 20)
         self.interEspaciadoCelda = 5
         self.inicioCuadriculaX = 11
@@ -73,9 +80,10 @@ class Laberinto:
         self.windowWidth = self.inicioCuadriculaX - 1 + self.nColumnas * (self.tamanoCelda + self.interEspaciadoCelda) + 5
 
         #botones
-        self.botonAnterior = Boton((self.windowWidth//20, self.topBarHeight//5), (5*self.windowWidth//20, 3*self.topBarHeight//5), self.menu.laberintoAnterior, "Anterior")
-        self.botonSiguiente = Boton((14*self.windowWidth//20, self.topBarHeight//5), (5*self.windowWidth//20, 3*self.topBarHeight//5), self.menu.laberintoSiguiente, "Siguiente")
-        self.botones = [self.botonAnterior, self.botonSiguiente]
+        self.botonAnterior = Boton((5*self.windowWidth//80, 5*self.topBarHeight//10), (5*self.windowWidth//20, 3*self.topBarHeight//10), self.menu.laberintoAnterior, "Anterior")
+        self.botonSiguiente = Boton((55*self.windowWidth//80, 5*self.topBarHeight//10), (5*self.windowWidth//20, 3*self.topBarHeight//10), self.menu.laberintoSiguiente, "Siguiente")
+        self.botonMenu = Boton((30*self.windowWidth//80, 5*self.topBarHeight//10), (5*self.windowWidth//20, 3*self.topBarHeight//10), self.menu.volverAMenu, "Menú")
+        
 
         
     def iniciarLaberinto(self):
@@ -93,6 +101,8 @@ class Laberinto:
                     if (self.nLab != self.menu.numLaberintos):
                         if self.botonSiguiente.handle_event(event.pos):
                             return False
+                    if self.botonMenu.handle_event(event.pos):
+                        return False
                     
 
             self.verificarVictoria()
@@ -100,7 +110,7 @@ class Laberinto:
             if(self.completo):
                 self.menu.setMovLab(self.movimientos, self.nLab)
                 self.menu.completarLaberinto(self.nLab)
-                pygame.time.wait(3000)
+                esperar(3000)
                 return True
 
             pygame.display.update()
@@ -126,7 +136,7 @@ class Laberinto:
                 self.posicion = solucion[i]
                 self.draw()
                 pygame.display.update()
-                pygame.time.wait(1000)
+                esperar(500)
             
             fuente = pygame.font.Font(None, max(35 - 3*(max(self.nFilas, self.nColumnas)//10), 15))
             tamOvalo = (200, 100)
@@ -144,7 +154,7 @@ class Laberinto:
             self.window.blit(superficieOvalo, ((self.windowWidth - tamOvalo[0])//2, (self.windowHeight - tamOvalo[1])//2))
             pygame.display.update()
             self.posicion = self.start
-            pygame.time.wait(2500)
+            esperar(2000)
             
         else:
             self.draw()
@@ -160,7 +170,7 @@ class Laberinto:
 
             self.window.blit(superficieOvalo, ((self.windowWidth - tamOvalo[0])//2, (self.windowHeight - tamOvalo[1])//2))
             pygame.display.update()
-            pygame.time.wait(2500)
+            esperar(2000)
 
     def verificarVictoria(self):
         if(self.posicion[0] == self.end[0] and self.posicion[1] == self.end[1]):
@@ -174,7 +184,7 @@ class Laberinto:
         pygame.draw.rect(self.window, TOP_BAR, pygame.Rect((0, 0), (self.windowWidth, self.topBarHeight)))
 
         texto = fuente.render(f"Laberinto {self.nLab}", True, BLACK)
-        rectTexto = texto.get_rect(center=(self.windowWidth//2, self.topBarHeight//2))
+        rectTexto = texto.get_rect(center=(self.windowWidth//2, self.topBarHeight//4))
 
         self.window.blit(texto, rectTexto)
 
@@ -183,6 +193,7 @@ class Laberinto:
             self.botonAnterior.draw(self.window)
         if (self.nLab != self.menu.numLaberintos):
             self.botonSiguiente.draw(self.window)
+        self.botonMenu.draw(self.window)
 
         #Dibuja la cuadricula
         for i in range(self.nFilas):
@@ -201,8 +212,6 @@ class Laberinto:
                 else:
                     pygame.draw.rect(self.window, WHITE, pygame.Rect((x, y), (self.tamanoCelda, self.tamanoCelda)))
                 
-
-
                 #Dibuja el numero correspondiente a cada cuadricula
                 numero = str(self.matriz[i][j])
                 if numero == "0":
@@ -239,6 +248,7 @@ class MenuPrincipal:
         self.labActual = 0
         self.movimientosPorLaberinto = [0] * self.numLaberintos
         self.isLabCompleted = [False] * self.numLaberintos
+        self.enMenu = True
 
         #Elementos de pygame
         self.window = None
@@ -246,13 +256,16 @@ class MenuPrincipal:
         self.windowHeight = 400
         buttonWidth = self.windowWidth//6
         buttonHeight = buttonWidth//2
+
+        #botones
         self.botonJugar = Boton((self.windowWidth//2-buttonWidth//2, 8*self.windowHeight//10), (buttonWidth,buttonHeight), self.jugarLaberinto, "Jugar", BOTONES_MENU, BOTONES_MENU_HOLD)
         self.botonBotDFS = Boton((self.windowWidth//8, 8*self.windowHeight//10), (buttonWidth, buttonHeight), self.ejecutarBotDFS, "Bot DFS", BOTONES_MENU, BOTONES_MENU_HOLD)
         self.botonBotCostoU = Boton((self.windowWidth - (buttonWidth + self.windowWidth//8), 8*self.windowHeight//10), (buttonWidth, buttonHeight), self.ejecutarBotCU, "Bot CU", BOTONES_MENU, BOTONES_MENU_HOLD)
         
     
     def jugarLaberinto(self):
-        while True:
+        self.enMenu = False
+        while not self.enMenu:
             for i in range(self.numLaberintos):
                 if (not self.isLabCompleted[i]):
                     break
@@ -266,6 +279,7 @@ class MenuPrincipal:
                 for i in range(self.labActual+1, self.labActual+self.numLaberintos):
                     if (not self.isLabCompleted[i%self.numLaberintos]):
                         self.labActual = i%self.numLaberintos
+                        break
         
     def ejecutarBotDFS(self):
         botDFS = BotDFS()
@@ -273,6 +287,8 @@ class MenuPrincipal:
         soluciones = []
         for i in range(self.numLaberintos):
             laberinto = self.laberintos[i]
+            if (i == 1):
+                pass
             botDFS.seleccionarLaberinto(laberinto.matriz, laberinto.posicion)
             solucion = botDFS.resolverLaberinto()
             if solucion:
@@ -283,9 +299,50 @@ class MenuPrincipal:
             laberinto.mostrarSolucionBot(solucion)
         
         self.window = pygame.display.set_mode((self.windowWidth, self.windowHeight))
+        self.mostrarResultadosBot(soluciones)
     
     def ejecutarBotCU(self):
-        pass
+        botCU = BotCU()
+        solucion = None
+        soluciones = []
+        for i in range(self.numLaberintos):
+            laberinto = self.laberintos[i]
+            if (i == 1):
+                pass
+            botCU.seleccionarLaberinto(laberinto.matriz, laberinto.posicion)
+            solucion = botCU.resolverLaberinto()
+            if solucion:
+                soluciones.append(solucion)
+            else:
+                soluciones.append("No hay solución")
+
+            laberinto.mostrarSolucionBot(solucion)
+        
+        self.window = pygame.display.set_mode((self.windowWidth, self.windowHeight))
+        self.mostrarResultadosBot(soluciones)
+    
+    def mostrarResultadosBot(self, soluciones):
+        #Setea una imagen de fondo
+        fondo = pygame.image.load("imagenes\maze.jpg")
+        fondo = pygame.transform.scale(fondo, (self.windowWidth, self.windowHeight))
+        self.window.blit(fondo, (0, 0))
+
+        fuenteResultados = pygame.font.Font(None, 25)
+    
+        for i, resultado in enumerate(soluciones):
+            if (resultado == "No hay solución"):
+                texto_sombra = fuenteResultados.render(f"Laberinto {i+1}: "+resultado, True, (0, 0, 0))
+                texto = fuenteResultados.render(f"Laberinto {i+1}: "+resultado, True, BEIGE)
+            else:
+                texto_sombra = fuenteResultados.render(f"Laberinto {i+1}: Solución lograda con {len(resultado)-1} movimientos.", True, (0, 0, 0))
+                texto = fuenteResultados.render(f"Laberinto {i+1}: Solución lograda con {len(resultado)-1} movimientos.", True, BEIGE)
+            
+            rectTexto = texto.get_rect(topleft=(self.windowWidth//10, 2*self.windowHeight//20 + 30*i))
+            self.window.blit(texto_sombra, (rectTexto.topleft[0]+3, rectTexto.topleft[1]+3))
+            self.window.blit(texto, rectTexto)
+        
+        pygame.display.flip()
+        esperar(5000)
 
     def addLaberinto(self, laberinto):
         self.laberintos.append(laberinto)
@@ -353,8 +410,12 @@ class MenuPrincipal:
 
             pygame.display.update()
             FramesPerSecond.tick(FPS)
-        
 
+    def volverAMenu(self):
+        self.enMenu = True
+        self.window = pygame.display.set_mode((self.windowWidth, self.windowHeight))
+        return True
+        
     def dibujarMenu(self):
         fuenteTitulo = pygame.font.Font(None, 60)
         fuenteTituloInstrucciones = pygame.font.Font(None, 40)
